@@ -1,3 +1,24 @@
+FROM golang:1.14-alpine AS go-builder
+LABEL maintainer="Nabendu Maiti <nbmaiti83@gmail.com>"
+
+ENV DOCKER_GEN_VERSION=0.7.4
+
+# Install build dependencies for docker-gen
+RUN apk add --update \
+        curl \
+        gcc \
+        git \
+        make \
+        musl-dev
+
+# Build docker-gen
+RUN go get github.com/jwilder/docker-gen \
+    && cd /go/src/github.com/jwilder/docker-gen \
+    && git checkout $DOCKER_GEN_VERSION \
+    && make get-deps \
+    && make all
+
+
 FROM nginx:1.19.3
 LABEL maintainer="Jason Wilder mail@jasonwilder.com"
 
@@ -20,9 +41,7 @@ RUN chmod u+x /usr/local/bin/forego
 
 ENV DOCKER_GEN_VERSION 0.7.4
 
-RUN wget https://github.com/jwilder/docker-gen/releases/download/$DOCKER_GEN_VERSION/docker-gen-linux-amd64-$DOCKER_GEN_VERSION.tar.gz \
- && tar -C /usr/local/bin -xvzf docker-gen-linux-amd64-$DOCKER_GEN_VERSION.tar.gz \
- && rm /docker-gen-linux-amd64-$DOCKER_GEN_VERSION.tar.gz
+COPY --from=go-builder /go/src/github.com/jwilder/docker-gen/docker-gen /usr/local/bin/
 
 COPY network_internal.conf /etc/nginx/
 
