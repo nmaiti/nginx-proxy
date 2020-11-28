@@ -1,12 +1,12 @@
+language: bash
 dist: bionic
-sudo: required
 
 env:
-  matrix:
-  - TEST_TARGET: test-debian
-  - TEST_TARGET: test-alpine
-  - DOCKER_REPO: nginx-proxy
-
+  global:
+    - DOCKER_REPO=nginx-proxy
+branches:
+  only:
+    - master
 before_install:
   - curl -fsSL https://get.docker.com | sh
   - echo '{"experimental":"enabled"}' | sudo tee /etc/docker/daemon.json
@@ -16,10 +16,8 @@ before_install:
   - docker version
   - docker info
   # prepare docker test requirements
-  - make update-dependencies
 install:
   - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
   - docker buildx create --name xbuilder --use
 script:
-  - make $TEST_TARGET
   - bash ci.sh
