@@ -1,22 +1,25 @@
-dist: trusty
+dist: bionic
 sudo: required
 
 env:
   matrix:
   - TEST_TARGET: test-debian
   - TEST_TARGET: test-alpine
+  - DOCKER_REPO: nginx-proxy
 
 before_install:
-  - sudo apt-get -y remove docker docker-engine docker-ce
-  - sudo rm /etc/apt/sources.list.d/docker.list
-  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-  - sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-  - sudo apt-get update
-  - sudo apt-get -y install docker-ce
+  - curl -fsSL https://get.docker.com | sh
+  - echo '{"experimental":"enabled"}' | sudo tee /etc/docker/daemon.json
+  - mkdir -p $HOME/.docker
+  - echo '{"experimental":"enabled"}' | sudo tee $HOME/.docker/config.json
+  - sudo service docker start
   - docker version
   - docker info
   # prepare docker test requirements
   - make update-dependencies
-
+install:
+  - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+  - docker buildx create --name xbuilder --use
 script:
   - make $TEST_TARGET
+  - bash ci.sh
