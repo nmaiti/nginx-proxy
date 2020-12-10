@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 golang:1.14-alpine AS go-builder
+FROM --platform=linux/amd64 golang:1.15.6-alpine3.12 AS go-builder
 LABEL maintainer="Nabendu Maiti <nbmaiti83@gmail.com>"
 
 ARG TARGETPLATFORM
@@ -31,19 +31,20 @@ RUN go get github.com/jwilder/docker-gen \
      esac \
 	&& GOOS=$TARGETOS  GOARCH=$TARGETARCH go build ./cmd/docker-gen
 
-# build forego
+# build goreman
 RUN cd /go/src  \
-	&& git clone https://github.com/ddollar/forego \
-    && cd forego \
-#	&& git checkout $FOREGO_VERSION \
+	&& git clone https://github.com/mattn/goreman.git \
+    && cd goreman \
 	&& case "$TARGETVARIANT" in  \
             v7) export GOARM='6' ;; \
             v6) export GOARM='5' ;; \
 			*) echo "nothing here" ;;\
      esac \
-	&& GOOS=$TARGETOS GOARCH=$TARGETARCH go build
+	&& GOOS=$TARGETOS GOARCH=$TARGETARCH go get ./... \
+	&& GOOS=$TARGETOS GOARCH=$TARGETARCH go build ./...
 
-FROM nginx:1.19.3-alpine
+#FROM nginx:1.19.3-alpine
+FROM nginx:mainline-alpine
 LABEL maintainer="Jason Wilder mail@jasonwilder.com"
 
 # Install wget and install/updates certificates
@@ -57,12 +58,10 @@ RUN echo "daemon off;" >> /etc/nginx/nginx.conf \
  && sed -i 's/worker_processes  1/worker_processes  auto/' /etc/nginx/nginx.conf
 
 # copy forego and docker-gen
-COPY --from=go-builder /go/src/forego/forego /usr/local/bin/
-RUN chmod u+x /usr/local/bin/forego
+COPY --from=go-builder /go/src/goreman/goreman /usr/local/bin/
+RUN chmod u+x /usr/local/bin/goreman
 COPY --from=go-builder /go/src/github.com/jwilder/docker-gen/docker-gen /usr/local/bin/
 RUN chmod u+x /usr/local/bin/docker-gen
-ADD https://github.com/jwilder/forego/releases/download/v0.16.1/forego /usr/local/bin/forego
-RUN chmod u+x /usr/local/bin/forego
 
 
 COPY network_internal.conf /etc/nginx/
@@ -75,4 +74,4 @@ ENV DOCKER_HOST unix:///tmp/docker.sock
 VOLUME ["/etc/nginx/certs", "/etc/nginx/dhparam"]
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["forego", "start", "-r"]
+CMD ["goreman", "start"]
