@@ -27,7 +27,7 @@ docker buildx build -f Dockerfile.alpine \
     --progress plain \
     --platform=linux/386,linux/amd64,linux/arm/v7,linux/arm/v6,linux/arm64,linux/ppc64le,linux/s390x \
     -t $DOCKER_USERID/$DOCKER_REPO:$TAG \
-    --push \
+    --pull --push \
     .
 DOCKER_REPO2="${DOCKER_REPO}_ubuntu"
 TAG2="ubuntu_${TAG}"
